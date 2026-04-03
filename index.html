@@ -725,96 +725,10 @@ button, input, textarea, select { font-family: var(--font); }
 </head>
 <body>
 
-<!-- ══════════════════ LOGIN ══════════════════ -->
-<div id="page-login" class="page active">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      </div>
-      <div>
-        <h1>Claude</h1>
-        <p>Connectez-vous à votre compte</p>
-      </div>
-    </div>
-    <div class="auth-form" id="login-form">
-      <div class="field">
-        <label>E-mail</label>
-        <input type="email" id="login-email" placeholder="vous@exemple.com" autocomplete="email" />
-      </div>
-      <div class="field">
-        <label>Mot de passe</label>
-        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
-      </div>
-      <div id="login-error" class="auth-error hidden"></div>
-      <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">Se connecter</button>
-    </div>
-    <div class="auth-footer">
-      Pas de compte ? <a onclick="showPage('signup')">S'inscrire</a>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════ SIGNUP ══════════════════ -->
-<div id="page-signup" class="page">
-  <div class="auth-card" id="signup-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      </div>
-      <div>
-        <h1>Claude</h1>
-        <p>Créez votre compte</p>
-      </div>
-    </div>
-    <div class="auth-form">
-      <div class="field">
-        <label>Nom d'affichage</label>
-        <input type="text" id="signup-name" placeholder="Jean" autocomplete="name" />
-      </div>
-      <div class="field">
-        <label>E-mail</label>
-        <input type="email" id="signup-email" placeholder="vous@exemple.com" autocomplete="email" />
-      </div>
-      <div class="field">
-        <label>Mot de passe</label>
-        <input type="password" id="signup-password" placeholder="6 caractères minimum" autocomplete="new-password" />
-      </div>
-      <div class="field">
-        <label>Confirmer le mot de passe</label>
-        <input type="password" id="signup-confirm" placeholder="••••••••" autocomplete="new-password" />
-      </div>
-      <div class="field">
-        <label>Langue</label>
-        <select id="signup-lang">
-          <option value="fr">Français</option>
-          <option value="en">English</option>
-          <option value="es">Español</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
-      <div id="signup-error" class="auth-error hidden"></div>
-      <button class="btn btn-primary" id="signup-btn" onclick="handleSignup()">S'inscrire</button>
-    </div>
-    <div class="auth-footer">
-      Déjà un compte ? <a onclick="showPage('login')">Se connecter</a>
-    </div>
-  </div>
-  <!-- success -->
-  <div class="auth-card hidden" id="signup-success">
-    <div style="text-align:center;padding:16px 0">
-      <div class="success-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <h2 style="font-size:20px;margin-bottom:8px">Vérifiez vos e-mails</h2>
-      <p id="signup-success-email" style="color:var(--text2);font-size:14px;margin-bottom:24px"></p>
-      <button class="btn btn-ghost" onclick="showPage('login')">Se connecter</button>
-    </div>
-  </div>
-</div>
+<!-- login/signup supprimés -->
 
 <!-- ══════════════════ CHAT ══════════════════ -->
-<div id="page-chat" class="page">
+<div id="page-chat" class="page active">
 
   <!-- Drag & Drop overlay -->
   <div class="drop-overlay" id="drop-overlay">
@@ -838,9 +752,9 @@ button, input, textarea, select { font-family: var(--font); }
     <div class="dropdown hidden" id="mobile-dropdown" style="top:42px;right:12px">
       <div class="dropdown-header"><div class="dn" id="mobile-dn"></div><div class="em" id="mobile-em"></div></div>
       <div class="dropdown-sep"></div>
-      <button class="dropdown-item danger" onclick="handleLogout()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        Se déconnecter
+      <button class="dropdown-item" onclick="openSettings(); closeDropdown()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.42 1.42M4.93 4.93l1.42 1.42M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.42-1.42M4.93 19.07l1.42-1.42"/></svg>
+        Paramètres
       </button>
     </div>
   </div>
@@ -905,9 +819,9 @@ button, input, textarea, select { font-family: var(--font); }
             <button class="dropdown-item" onclick="setLang('de')" id="lang-de"><span style="flex:1">Deutsch</span><svg class="lang-check hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
           </div>
           <div class="dropdown-sep"></div>
-          <button class="dropdown-item danger" onclick="handleLogout()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-            Se déconnecter
+          <button class="dropdown-item" onclick="openSettings(); closeDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.42 1.42M4.93 4.93l1.42 1.42M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.42-1.42M4.93 19.07l1.42-1.42"/></svg>
+            Paramètres
           </button>
         </div>
       </div>
@@ -1101,19 +1015,15 @@ function t(key) { return (T[state.lang] || T.fr)[key] || key }
 // INIT
 // ══════════════════════════════════════════
 function init() {
-  const saved = localStorage.getItem('claude_user')
-  const key = localStorage.getItem('claude_api_key')
-  if (key) state.apiKey = key
   state.provider = localStorage.getItem('claude_provider') || 'openrouter'
-  if (saved) {
-    state.user = JSON.parse(saved)
-    state.lang = state.user.lang || 'fr'
-    const convs = localStorage.getItem('claude_convs_' + state.user.email)
-    if (convs) state.conversations = JSON.parse(convs)
-    showPage('chat')
-  } else {
-    showPage('login')
-  }
+  state.user = { name: 'Utilisateur', email: 'user@local' }
+  const convs = localStorage.getItem('claude_convs_local')
+  if (convs) state.conversations = JSON.parse(convs)
+  showPage('chat')
+}
+
+function saveConversations() {
+  localStorage.setItem('claude_convs_local', JSON.stringify(state.conversations))
 }
 
 // ══════════════════════════════════════════
@@ -1196,29 +1106,23 @@ document.addEventListener('keydown', e => {
 // CHAT RENDER
 // ══════════════════════════════════════════
 function renderChat() {
-  const u = state.user
-  if (!u) return
-
-  const initials = (u.name || u.email).slice(0, 2).toUpperCase()
-
+  const initials = 'U'
   document.getElementById('header-avatar').textContent = initials
-  document.getElementById('header-dn').textContent = u.name || u.email.split('@')[0]
-  document.getElementById('header-em').textContent = u.email
-
+  document.getElementById('header-dn').textContent = 'Utilisateur'
+  document.getElementById('header-em').textContent = ''
   document.getElementById('mobile-avatar').textContent = initials
-  document.getElementById('mobile-dn').textContent = u.name || u.email.split('@')[0]
-  document.getElementById('mobile-em').textContent = u.email
+  document.getElementById('mobile-dn').textContent = 'Utilisateur'
+  document.getElementById('mobile-em').textContent = ''
+  document.getElementById('settings-email').textContent = 'Local'
+  document.getElementById('settings-name').textContent = 'Utilisateur'
 
-  document.getElementById('settings-email').textContent = u.email
-  document.getElementById('settings-name').textContent = u.name || u.email.split('@')[0]
-
-  const savedKey = localStorage.getItem('claude_api_key') || ''
-  document.getElementById('api-key-input').value = savedKey
   // Load saved keys for all providers
   ;['openrouter', 'gemini'].forEach(p => {
     const el = document.getElementById(`${p}-key-input`)
     if (el) el.value = localStorage.getItem(`claude_key_${p}`) || ''
   })
+  const anthropicEl = document.getElementById('api-key-input')
+  if (anthropicEl) anthropicEl.value = localStorage.getItem('claude_api_key') || ''
   // Set provider cards
   ;['openrouter', 'gemini', 'anthropic'].forEach(p => {
     document.getElementById('card-' + p)?.classList.toggle('selected', p === state.provider)
@@ -1313,9 +1217,7 @@ function selectConv(id) {
   renderMessages()
 }
 
-function saveConversations() {
-  localStorage.setItem('claude_convs_' + state.user.email, JSON.stringify(state.conversations))
-}
+// placeholder removed
 
 // ══════════════════════════════════════════
 // MESSAGES
