@@ -695,6 +695,32 @@ button, input, textarea, select { font-family: var(--font); }
   color: var(--accent);
   border: 1px solid rgba(217,119,6,0.2);
 }
+
+/* Provider cards */
+.provider-card {
+  display: block;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.provider-card:hover { border-color: var(--border2); background: var(--bg4); }
+.provider-card.selected { border-color: var(--accent); background: var(--accent-bg); }
+.provider-radio {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 2px solid var(--border2);
+  border-radius: 50%;
+  transition: all 0.15s;
+}
+.provider-card.selected .provider-radio {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--accent-bg);
+}
+.provider-key-row { display: none; }
+.provider-card.selected .provider-key-row { display: block; }
 </style>
 </head>
 <body>
@@ -915,7 +941,7 @@ button, input, textarea, select { font-family: var(--font); }
 
 <!-- Settings modal -->
 <div class="modal-overlay" id="settings-modal" onclick="closeSettingsOutside(event)">
-  <div class="modal">
+  <div class="modal" style="max-width:500px">
     <div class="modal-header">
       <h2>Paramètres</h2>
       <button class="icon-btn" onclick="closeSettings()">
@@ -931,24 +957,59 @@ button, input, textarea, select { font-family: var(--font); }
         <span class="setting-label">Nom d'affichage</span>
         <span class="setting-value" id="settings-name"></span>
       </div>
-      <div class="setting-row">
-        <span class="setting-label">Modèle</span>
-        <span class="setting-value">claude-sonnet-4-20250514</span>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Mode API</span>
-        <span class="setting-value" id="settings-api-mode" style="color:var(--success)">Gratuit (proxy intégré)</span>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Clé API personnelle <span style="font-size:11px;color:var(--text3)">(optionnel)</span></span>
-        <div>
-          <input type="password" id="api-key-input" placeholder="sk-ant-..." style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:200px" oninput="saveApiKey()" />
+
+      <!-- Provider selector -->
+      <div>
+        <div class="setting-label" style="margin-bottom:10px">Fournisseur IA</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+
+          <!-- OpenRouter -->
+          <label class="provider-card" id="card-openrouter" onclick="selectProvider('openrouter')">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="provider-radio" id="radio-openrouter"></div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:var(--text)">OpenRouter <span style="font-size:11px;font-weight:400;color:var(--success);background:rgba(34,197,94,0.1);padding:1px 7px;border-radius:99px;margin-left:4px">Gratuit</span></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px">Accès à Claude &amp; autres modèles · <a href="https://openrouter.ai" target="_blank" style="color:var(--accent);text-decoration:none">openrouter.ai</a></div>
+              </div>
+            </div>
+            <div class="provider-key-row" id="key-row-openrouter">
+              <input type="password" id="openrouter-key-input" placeholder="sk-or-v1-..." style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:100%;margin-top:10px" oninput="saveProviderKey('openrouter')" onclick="event.stopPropagation()" />
+              <div style="font-size:11px;color:var(--text3);margin-top:5px">Clé gratuite sur <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent);text-decoration:none">openrouter.ai/keys</a></div>
+            </div>
+          </label>
+
+          <!-- Gemini -->
+          <label class="provider-card" id="card-gemini" onclick="selectProvider('gemini')">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="provider-radio" id="radio-gemini"></div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:var(--text)">Google Gemini <span style="font-size:11px;font-weight:400;color:var(--success);background:rgba(34,197,94,0.1);padding:1px 7px;border-radius:99px;margin-left:4px">Gratuit</span></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px">Gemini 2.0 Flash · <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent);text-decoration:none">aistudio.google.com</a></div>
+              </div>
+            </div>
+            <div class="provider-key-row" id="key-row-gemini">
+              <input type="password" id="gemini-key-input" placeholder="AIzaSy..." style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:100%;margin-top:10px" oninput="saveProviderKey('gemini')" onclick="event.stopPropagation()" />
+              <div style="font-size:11px;color:var(--text3);margin-top:5px">Clé gratuite sur <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent);text-decoration:none">aistudio.google.com/apikey</a></div>
+            </div>
+          </label>
+
+          <!-- Anthropic -->
+          <label class="provider-card" id="card-anthropic" onclick="selectProvider('anthropic')">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="provider-radio" id="radio-anthropic"></div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:var(--text)">Anthropic direct <span style="font-size:11px;font-weight:400;color:var(--accent);background:var(--accent-bg);padding:1px 7px;border-radius:99px;margin-left:4px">Payant</span></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px">Claude Sonnet 4 · <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);text-decoration:none">console.anthropic.com</a></div>
+              </div>
+            </div>
+            <div class="provider-key-row" id="key-row-anthropic">
+              <input type="password" id="api-key-input" placeholder="sk-ant-..." style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:100%;margin-top:10px" oninput="saveProviderKey('anthropic')" onclick="event.stopPropagation()" />
+            </div>
+          </label>
         </div>
       </div>
-      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text2);line-height:1.5">
-        ✅ <strong style="color:var(--success)">Mode gratuit actif</strong> — Aucune clé API requise. Le proxy intégré est utilisé automatiquement.<br><br>
-        Vous pouvez optionnellement entrer votre propre clé API Anthropic pour un usage illimité. Elle sera stockée localement dans votre navigateur.
-      </div>
+
+      <div id="settings-info-box" style="border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text2);line-height:1.6"></div>
     </div>
   </div>
 </div>
@@ -967,7 +1028,8 @@ let state = {
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
   apiKey: '',
-  pendingAttachments: [], // [{name, type, dataUrl, text}]
+  pendingAttachments: [],
+  provider: 'openrouter', // 'openrouter' | 'gemini' | 'anthropic'
 }
 
 const T = {
@@ -1042,6 +1104,7 @@ function init() {
   const saved = localStorage.getItem('claude_user')
   const key = localStorage.getItem('claude_api_key')
   if (key) state.apiKey = key
+  state.provider = localStorage.getItem('claude_provider') || 'openrouter'
   if (saved) {
     state.user = JSON.parse(saved)
     state.lang = state.user.lang || 'fr'
@@ -1151,7 +1214,17 @@ function renderChat() {
 
   const savedKey = localStorage.getItem('claude_api_key') || ''
   document.getElementById('api-key-input').value = savedKey
+  // Load saved keys for all providers
+  ;['openrouter', 'gemini'].forEach(p => {
+    const el = document.getElementById(`${p}-key-input`)
+    if (el) el.value = localStorage.getItem(`claude_key_${p}`) || ''
+  })
+  // Set provider cards
+  ;['openrouter', 'gemini', 'anthropic'].forEach(p => {
+    document.getElementById('card-' + p)?.classList.toggle('selected', p === state.provider)
+  })
   updateApiModeBadge()
+  updateSettingsInfoBox()
 
   setLangUI(state.lang)
   renderConversations()
@@ -1524,106 +1597,20 @@ function syncConv() {
 }
 
 // ══════════════════════════════════════════
-// API CALL
+// API CALL — multi-provider
 // ══════════════════════════════════════════
 async function callAPI(userText, attachments) {
-  const apiKey = localStorage.getItem('claude_api_key') || ''
-  const useProxy = !apiKey
+  const provider = state.provider || 'openrouter'
 
   state.isStreaming = true
   state.messages.push({ role: 'assistant', content: '' })
   renderMessages()
 
-  // Build message content for this user turn
-  function buildUserContent(msg) {
-    const parts = []
-    // Add attachments
-    if (msg.attachments && msg.attachments.length) {
-      msg.attachments.forEach(a => {
-        if (a.type === 'image') {
-          // base64 image
-          const base64 = a.dataUrl.split(',')[1]
-          parts.push({ type: 'image', source: { type: 'base64', media_type: a.mimeType || 'image/jpeg', data: base64 } })
-        } else if (a.type === 'text') {
-          parts.push({ type: 'text', text: `[Fichier: ${a.name}]\n\`\`\`\n${a.text}\n\`\`\`` })
-        } else if (a.type === 'pdf') {
-          const base64 = a.dataUrl.split(',')[1]
-          parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } })
-        }
-      })
-    }
-    if (msg.content) parts.push({ type: 'text', text: msg.content })
-    return parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts
-  }
-
-  const apiMessages = state.messages.slice(0, -1).map(m => ({
-    role: m.role,
-    content: m.role === 'user' ? buildUserContent(m) : m.content,
-  }))
-
-  const body = {
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    stream: true,
-    system: "You are Claude, a helpful AI assistant made by Anthropic. You are helpful, harmless, and honest. You respond in a warm, conversational tone while being precise and informative. You use markdown formatting when appropriate to structure your responses clearly.",
-    messages: apiMessages,
-  }
-
   try {
-    let res
-    if (useProxy) {
-      // Free mode: use Anthropic proxy (available in this environment)
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify(body),
-      })
+    if (provider === 'gemini') {
+      await callGemini()
     } else {
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify(body),
-      })
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.error?.message || `Erreur HTTP ${res.status}`)
-    }
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buf = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop()
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-        const data = line.slice(6).trim()
-        if (data === '[DONE]') continue
-        try {
-          const parsed = JSON.parse(data)
-          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
-            const last = state.messages[state.messages.length - 1]
-            last.content += parsed.delta.text
-            updateLastMessage(last.content)
-          }
-        } catch {}
-      }
+      await callOpenAICompat(provider)
     }
   } catch (e) {
     const last = state.messages[state.messages.length - 1]
@@ -1633,6 +1620,167 @@ async function callAPI(userText, attachments) {
   state.isStreaming = false
   syncConv()
   renderMessages()
+}
+
+// ── OpenAI-compat (OpenRouter + Anthropic direct) ──
+async function callOpenAICompat(provider) {
+  const isOpenRouter = provider === 'openrouter'
+  const apiKey = localStorage.getItem(isOpenRouter ? 'claude_key_openrouter' : 'claude_api_key') || ''
+
+  if (!apiKey) {
+    const last = state.messages[state.messages.length - 1]
+    const links = { openrouter: 'https://openrouter.ai/keys', anthropic: 'https://console.anthropic.com' }
+    last.content = `⚠️ **Clé API manquante**\n\nVeuillez entrer votre clé ${isOpenRouter ? 'OpenRouter' : 'Anthropic'} dans les **Paramètres**.\n\nObtenez une clé gratuite sur [${links[provider]}](${links[provider]}).`
+    return
+  }
+
+  const systemPrompt = "You are Claude, a helpful AI assistant. You are helpful, harmless, and honest. Respond in a warm, conversational tone. Use markdown formatting when appropriate."
+
+  // Build messages for OpenAI format
+  function buildContent(msg) {
+    if (!msg.attachments || msg.attachments.length === 0) return msg.content || ''
+    const parts = []
+    msg.attachments.forEach(a => {
+      if (a.type === 'image') {
+        parts.push({ type: 'image_url', image_url: { url: a.dataUrl } })
+      } else if (a.type === 'text') {
+        parts.push({ type: 'text', text: `[Fichier: ${a.name}]\n\`\`\`\n${a.text}\n\`\`\`` })
+      }
+    })
+    if (msg.content) parts.push({ type: 'text', text: msg.content })
+    return parts.length ? parts : (msg.content || '')
+  }
+
+  const messages = state.messages.slice(0, -1).map(m => ({
+    role: m.role,
+    content: m.role === 'user' ? buildContent(m) : m.content,
+  }))
+
+  const config = isOpenRouter
+    ? { url: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-3.5-haiku', headers: { 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': location.href, 'X-Title': 'Claude App' } }
+    : { url: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-20250514', headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } }
+
+  // OpenRouter uses OpenAI format, Anthropic uses its own
+  let body, res
+  if (isOpenRouter) {
+    body = { model: config.model, max_tokens: 4096, stream: true, messages: [{ role: 'system', content: systemPrompt }, ...messages] }
+    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body) })
+  } else {
+    body = { model: config.model, max_tokens: 4096, stream: true, system: systemPrompt, messages }
+    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body) })
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Erreur HTTP ${res.status}`)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop()
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      if (data === '[DONE]') continue
+      try {
+        const parsed = JSON.parse(data)
+        let chunk = ''
+        if (isOpenRouter) {
+          chunk = parsed.choices?.[0]?.delta?.content || ''
+        } else {
+          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') chunk = parsed.delta.text
+        }
+        if (chunk) {
+          const last = state.messages[state.messages.length - 1]
+          last.content += chunk
+          updateLastMessage(last.content)
+        }
+      } catch {}
+    }
+  }
+}
+
+// ── Google Gemini ──
+async function callGemini() {
+  const apiKey = localStorage.getItem('claude_key_gemini') || ''
+
+  if (!apiKey) {
+    const last = state.messages[state.messages.length - 1]
+    last.content = `⚠️ **Clé API Gemini manquante**\n\nVeuillez entrer votre clé Google AI Studio dans les **Paramètres**.\n\nObtenez une clé gratuite sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`
+    return
+  }
+
+  // Build Gemini contents
+  function buildGeminiParts(msg) {
+    const parts = []
+    if (msg.attachments) {
+      msg.attachments.forEach(a => {
+        if (a.type === 'image') {
+          const base64 = a.dataUrl.split(',')[1]
+          parts.push({ inline_data: { mime_type: a.mimeType || 'image/jpeg', data: base64 } })
+        } else if (a.type === 'text') {
+          parts.push({ text: `[Fichier: ${a.name}]\n\`\`\`\n${a.text}\n\`\`\`` })
+        }
+      })
+    }
+    if (msg.content) parts.push({ text: msg.content })
+    return parts.length ? parts : [{ text: '' }]
+  }
+
+  const contents = state.messages.slice(0, -1).map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: buildGeminiParts(m),
+  }))
+
+  const systemInstruction = { parts: [{ text: "You are Claude, a helpful AI assistant. Be helpful, harmless, and honest. Respond in a warm, conversational tone. Use markdown formatting when appropriate." }] }
+
+  const body = {
+    system_instruction: systemInstruction,
+    contents,
+    generationConfig: { maxOutputTokens: 4096 },
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Erreur HTTP ${res.status}`)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop()
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      try {
+        const parsed = JSON.parse(data)
+        const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        if (chunk) {
+          const last = state.messages[state.messages.length - 1]
+          last.content += chunk
+          updateLastMessage(last.content)
+        }
+      } catch {}
+    }
+  }
 }
 
 function updateLastMessage(content) {
@@ -1763,26 +1911,52 @@ function closeSettings() {
 function closeSettingsOutside(e) {
   if (e.target === document.getElementById('settings-modal')) closeSettings()
 }
-function saveApiKey() {
-  const key = document.getElementById('api-key-input').value
-  state.apiKey = key
-  localStorage.setItem('claude_api_key', key)
+function saveProviderKey(provider) {
+  const inputId = provider === 'anthropic' ? 'api-key-input' : `${provider}-key-input`
+  const key = document.getElementById(inputId)?.value || ''
+  localStorage.setItem(`claude_key_${provider}`, key)
+  // legacy compat
+  if (provider === 'anthropic') localStorage.setItem('claude_api_key', key)
   updateApiModeBadge()
 }
 
+// legacy shim
+function saveApiKey() { saveProviderKey('anthropic') }
+
+function selectProvider(provider) {
+  state.provider = provider
+  localStorage.setItem('claude_provider', provider)
+  // Update card styles
+  ;['openrouter', 'gemini', 'anthropic'].forEach(p => {
+    document.getElementById('card-' + p)?.classList.toggle('selected', p === provider)
+  })
+  updateApiModeBadge()
+  updateSettingsInfoBox()
+}
+
 function updateApiModeBadge() {
-  const key = localStorage.getItem('claude_api_key') || ''
+  const provider = state.provider || 'openrouter'
   const badge = document.getElementById('api-mode-badge')
-  const settingsMode = document.getElementById('settings-api-mode')
-  if (key) {
-    badge.textContent = '🔑 Clé perso'
-    badge.className = 'api-mode-badge api-mode-key'
-    if (settingsMode) { settingsMode.textContent = 'Clé API personnelle'; settingsMode.style.color = 'var(--accent)' }
-  } else {
-    badge.textContent = '✓ Gratuit'
-    badge.className = 'api-mode-badge api-mode-free'
-    if (settingsMode) { settingsMode.textContent = 'Gratuit (proxy intégré)'; settingsMode.style.color = 'var(--success)' }
+  if (!badge) return
+  const labels = { openrouter: '✓ OpenRouter', gemini: '✓ Gemini', anthropic: '🔑 Anthropic' }
+  const classes = { openrouter: 'api-mode-free', gemini: 'api-mode-free', anthropic: 'api-mode-key' }
+  badge.textContent = labels[provider] || '✓ Gratuit'
+  badge.className = 'api-mode-badge ' + (classes[provider] || 'api-mode-free')
+}
+
+function updateSettingsInfoBox() {
+  const box = document.getElementById('settings-info-box')
+  if (!box) return
+  const provider = state.provider || 'openrouter'
+  const infos = {
+    openrouter: { bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)', text: '✅ <strong style="color:var(--success)">OpenRouter</strong> — Créez un compte gratuit, copiez votre clé API et collez-la ci-dessus. Donne accès à Claude et des dizaines d\'autres modèles.' },
+    gemini: { bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)', text: '✅ <strong style="color:var(--success)">Google Gemini</strong> — Connectez-vous à AI Studio avec votre compte Google, créez une clé gratuite et collez-la ci-dessus. Modèle : gemini-2.0-flash.' },
+    anthropic: { bg: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.2)', text: '🔑 <strong style="color:var(--accent)">Anthropic direct</strong> — Utilise Claude Sonnet 4. Nécessite un compte avec crédits sur console.anthropic.com. Clé stockée localement.' },
   }
+  const info = infos[provider] || infos.openrouter
+  box.style.background = info.bg
+  box.style.border = `1px solid ${info.border}`
+  box.innerHTML = info.text
 }
 
 // ══════════════════════════════════════════
