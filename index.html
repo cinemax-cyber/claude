@@ -546,6 +546,20 @@ button, input, textarea, select { font-family: var(--font); }
 .send-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .send-btn svg { width: 16px; height: 16px; }
+
+.stop-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.stop-btn:hover { background: rgba(239,68,68,0.22); border-color: rgba(239,68,68,0.5); }
 .input-hint { text-align: center; font-size: 11px; color: var(--text3); margin-top: 8px; max-width: 760px; margin-left: auto; margin-right: auto; }
 
 /* ── MOBILE ── */
@@ -921,9 +935,17 @@ button, input, textarea, select { font-family: var(--font); }
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
             </button>
           </div>
-          <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-          </button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <!-- Stop button (visible only while streaming) -->
+            <button class="stop-btn hidden" id="stop-btn" onclick="stopStreaming()" title="Arrêter la génération">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+              Arrêter
+            </button>
+            <!-- Send button (hidden while streaming) -->
+            <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
         </div>
       </div>
       <div class="input-hint">Claude peut faire des erreurs. Vérifiez les réponses importantes.</div>
@@ -1022,6 +1044,7 @@ let state = {
   apiKey: '',
   pendingAttachments: [],
   provider: 'openrouter', // 'openrouter' | 'gemini' | 'anthropic'
+  abortController: null,
 }
 
 const T = {
@@ -1211,6 +1234,7 @@ function renderChat() {
   setLangUI(state.lang)
   renderConversations()
   renderMessages()
+  updateSendBtn()
   initDragDrop()
 }
 
@@ -1583,28 +1607,34 @@ function syncConv() {
 async function callAPI(userText, attachments) {
   const provider = state.provider || 'openrouter'
 
+  state.abortController = new AbortController()
   state.isStreaming = true
   state.messages.push({ role: 'assistant', content: '' })
   renderMessages()
+  updateSendBtn()
 
   try {
     if (provider === 'gemini') {
-      await callGemini()
+      await callGemini(state.abortController.signal)
     } else {
-      await callOpenAICompat(provider)
+      await callOpenAICompat(provider, state.abortController.signal)
     }
   } catch (e) {
-    const last = state.messages[state.messages.length - 1]
-    last.content = `⚠️ **Erreur:** ${e.message}`
+    if (e.name !== 'AbortError') {
+      const last = state.messages[state.messages.length - 1]
+      if (!last.content) last.content = `⚠️ **Erreur:** ${e.message}`
+    }
   }
 
   state.isStreaming = false
+  state.abortController = null
+  updateSendBtn()
   syncConv()
   renderMessages()
 }
 
 // ── OpenAI-compat (OpenRouter + Anthropic direct) ──
-async function callOpenAICompat(provider) {
+async function callOpenAICompat(provider, signal) {
   const isOpenRouter = provider === 'openrouter'
   const apiKey = localStorage.getItem(isOpenRouter ? 'claude_key_openrouter' : 'claude_api_key') || ''
 
@@ -1645,10 +1675,10 @@ async function callOpenAICompat(provider) {
   let body, res
   if (isOpenRouter) {
     body = { model: config.model, max_tokens: 4096, stream: true, messages: [{ role: 'system', content: systemPrompt }, ...messages] }
-    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body) })
+    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body), signal })
   } else {
     body = { model: config.model, max_tokens: 4096, stream: true, system: systemPrompt, messages }
-    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body) })
+    res = await fetch(config.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...config.headers }, body: JSON.stringify(body), signal })
   }
 
   if (!res.ok) {
@@ -1660,37 +1690,41 @@ async function callOpenAICompat(provider) {
   const decoder = new TextDecoder()
   let buf = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-    const lines = buf.split('\n')
-    buf = lines.pop()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop()
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      if (data === '[DONE]') continue
-      try {
-        const parsed = JSON.parse(data)
-        let chunk = ''
-        if (isOpenRouter) {
-          chunk = parsed.choices?.[0]?.delta?.content || ''
-        } else {
-          if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') chunk = parsed.delta.text
-        }
-        if (chunk) {
-          const last = state.messages[state.messages.length - 1]
-          last.content += chunk
-          updateLastMessage(last.content)
-        }
-      } catch {}
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') continue
+        try {
+          const parsed = JSON.parse(data)
+          let chunk = ''
+          if (isOpenRouter) {
+            chunk = parsed.choices?.[0]?.delta?.content || ''
+          } else {
+            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') chunk = parsed.delta.text
+          }
+          if (chunk) {
+            const last = state.messages[state.messages.length - 1]
+            last.content += chunk
+            updateLastMessage(last.content)
+          }
+        } catch {}
+      }
     }
+  } finally {
+    reader.cancel()
   }
 }
 
 // ── Google Gemini ──
-async function callGemini() {
+async function callGemini(signal) {
   const apiKey = localStorage.getItem('claude_key_gemini') || ''
 
   if (!apiKey) {
@@ -1730,7 +1764,7 @@ async function callGemini() {
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -1741,26 +1775,30 @@ async function callGemini() {
   const decoder = new TextDecoder()
   let buf = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-    const lines = buf.split('\n')
-    buf = lines.pop()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop()
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      try {
-        const parsed = JSON.parse(data)
-        const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        if (chunk) {
-          const last = state.messages[state.messages.length - 1]
-          last.content += chunk
-          updateLastMessage(last.content)
-        }
-      } catch {}
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        try {
+          const parsed = JSON.parse(data)
+          const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (chunk) {
+            const last = state.messages[state.messages.length - 1]
+            last.content += chunk
+            updateLastMessage(last.content)
+          }
+        } catch {}
+      }
     }
+  } finally {
+    reader.cancel()
   }
 }
 
@@ -1924,11 +1962,27 @@ function autoResize(el) {
 
 function updateSendBtn() {
   const btn = document.getElementById('send-btn')
+  const stopBtn = document.getElementById('stop-btn')
   const val = document.getElementById('msg-input')?.value.trim()
   const hasAttachments = state.pendingAttachments.length > 0
-  if (btn) {
-    btn.disabled = (!val && !hasAttachments) || state.isStreaming
-    btn.classList.toggle('active', (!!val || hasAttachments) && !state.isStreaming)
+
+  if (state.isStreaming) {
+    btn?.classList.add('hidden')
+    stopBtn?.classList.remove('hidden')
+  } else {
+    btn?.classList.remove('hidden')
+    stopBtn?.classList.add('hidden')
+    if (btn) {
+      btn.disabled = !val && !hasAttachments
+      btn.classList.toggle('active', (!!val || hasAttachments))
+    }
+  }
+}
+
+function stopStreaming() {
+  if (state.abortController) {
+    state.abortController.abort()
+    state.abortController = null
   }
 }
 
