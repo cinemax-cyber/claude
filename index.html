@@ -652,16 +652,41 @@ button, input, textarea, select { font-family: var(--font); }
   font-family: var(--font);
 }
 .code-copy-btn:hover { color: var(--text); background: var(--bg2); }
+
+/* Side-by-side layout */
+.code-split-body {
+  display: flex;
+  height: 420px;
+}
+.code-split-left {
+  flex: 1; overflow: auto;
+  border-right: 1px solid var(--border);
+}
+.code-split-left pre {
+  margin: 0 !important; border: none !important; border-radius: 0 !important;
+  background: var(--bg3) !important;
+  height: 100%; min-height: 100%;
+  padding: 14px !important;
+}
+.code-split-right {
+  flex: 1;
+  background: #fff;
+  overflow: hidden;
+}
+.code-preview-frame {
+  width: 100%; height: 100%;
+  border: none;
+  background: #fff;
+  display: block;
+}
+
+/* Code only (no preview) */
 .code-block-wrap pre {
   margin: 0; border: none; border-radius: 0;
   background: transparent;
 }
-.code-preview-frame {
-  width: 100%;
-  min-height: 320px;
-  border: none;
-  background: #fff;
-  display: block;
+.code-block-wrap > pre {
+  padding: 14px;
 }
 .drop-overlay {
   display: none;
@@ -1351,6 +1376,7 @@ function renderMessages() {
   }).join('')
 
   scrollBottom()
+  setTimeout(injectIframes, 50)
 }
 
 function scrollBottom() {
@@ -1744,110 +1770,14 @@ function updateLastMessage(content) {
   if (el) {
     el.querySelector('.message-content').innerHTML = renderMarkdown(content, idx) + '<span class="cursor"></span>'
     scrollBottom()
+    setTimeout(injectIframes, 50)
   }
 }
 
 // ══════════════════════════════════════════
 // MARKDOWN + PREVIEW
 // ══════════════════════════════════════════
-let previewStates = {} // msgIdx_blockIdx -> 'preview'|'code'
-
-function togglePreview(msgIdx, blockIdx) {
-  const key = `${msgIdx}_${blockIdx}`
-  previewStates[key] = previewStates[key] === 'preview' ? 'code' : 'preview'
-  renderMessages()
-  // scroll to block
-  setTimeout(() => {
-    const el = document.getElementById(`preview-${msgIdx}-${blockIdx}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, 50)
-}
-
-function isRenderable(lang) {
-  return ['html', 'htm', 'svg', ''].includes((lang || '').toLowerCase())
-}
-
-function renderMarkdown(text, msgIdx) {
-  // Extract code blocks first, replace with placeholders
-  const blocks = []
-  let processed = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const idx = blocks.length
-    blocks.push({ lang: lang.trim(), code: code.trim() })
-    return `%%BLOCK_${idx}%%`
-  })
-
-  let h = escHtml(processed)
-
-  // inline code
-  h = h.replace(/`([^`]+)`/g, '<code>$1</code>')
-  // headings
-  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>')
-  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>')
-  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>')
-  // bold & italic
-  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  // blockquote
-  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
-  // lists
-  h = h.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
-  h = h.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
-  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-  // paragraphs
-  h = h.split(/\n{2,}/).map(p => {
-    p = p.trim()
-    if (!p) return ''
-    if (p.startsWith('%%BLOCK_')) return p
-    if (/^<(h[123]|ul|ol|pre|blockquote)/.test(p)) return p
-    return `<p>${p.replace(/\n/g, '<br>')}</p>`
-  }).join('')
-
-  // Restore code blocks with preview capability
-  h = h.replace(/%%BLOCK_(\d+)%%/g, (_, idxStr) => {
-    const i = parseInt(idxStr)
-    const { lang, code } = blocks[i]
-    const key = `${msgIdx}_${i}`
-    const canPreview = isRenderable(lang) && code.toLowerCase().includes('<')
-    const isPreview = canPreview && previewStates[key] !== 'code'
-
-    if (canPreview) {
-      const previewMode = isPreview
-      const encoded = encodeURIComponent(code)
-      return `<div class="code-block-wrap" id="preview-${msgIdx}-${i}">
-        <div class="code-block-header">
-          <span class="code-lang">${lang || 'html'}</span>
-          <div style="display:flex;gap:4px">
-            <button class="code-toggle-btn ${previewMode ? 'active' : ''}" onclick="setPreviewMode(${msgIdx},${i},'preview')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              Aperçu
-            </button>
-            <button class="code-toggle-btn ${!previewMode ? 'active' : ''}" onclick="setPreviewMode(${msgIdx},${i},'code')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              Code
-            </button>
-          </div>
-        </div>
-        ${previewMode
-          ? `<iframe class="code-preview-frame" srcdoc="${encoded.replace(/"/g, '&quot;')}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>`
-          : `<pre><code>${escHtml(code)}</code></pre>`
-        }
-      </div>`
-    }
-
-    return `<div class="code-block-wrap">
-      <div class="code-block-header">
-        <span class="code-lang">${lang || 'code'}</span>
-        <button class="code-copy-btn" onclick="copyCode(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Copier
-        </button>
-      </div>
-      <pre><code>${escHtml(code)}</code></pre>
-    </div>`
-  })
-
-  return h
-}
+let previewStates = {} // msgIdx_blockIdx -> 'split'|'code'|'preview'
 
 function setPreviewMode(msgIdx, blockIdx, mode) {
   previewStates[`${msgIdx}_${blockIdx}`] = mode
@@ -1858,11 +1788,121 @@ function setPreviewMode(msgIdx, blockIdx, mode) {
   }, 50)
 }
 
-function copyCode(btn) {
-  const code = btn.closest('.code-block-wrap')?.querySelector('pre code')?.textContent || ''
-  navigator.clipboard.writeText(code).then(() => {
-    btn.textContent = '✓ Copié'
-    setTimeout(() => { btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier` }, 1500)
+function isRenderable(lang, code) {
+  const l = (lang || '').toLowerCase()
+  return ['html', 'htm', 'svg', ''].includes(l) && /<[\w]/.test(code)
+}
+
+// Store code for iframes (keyed by msgIdx_blockIdx)
+const iframeCode = {}
+
+function renderMarkdown(text, msgIdx) {
+  const blocks = []
+  let processed = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = blocks.length
+    blocks.push({ lang: lang.trim(), code: code.trim() })
+    return `%%BLOCK_${idx}%%`
+  })
+
+  let h = escHtml(processed)
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>')
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+  h = h.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
+  h = h.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+  h = h.split(/\n{2,}/).map(p => {
+    p = p.trim()
+    if (!p) return ''
+    if (p.startsWith('%%BLOCK_')) return p
+    if (/^<(h[123]|ul|ol|pre|blockquote)/.test(p)) return p
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`
+  }).join('')
+
+  h = h.replace(/%%BLOCK_(\d+)%%/g, (_, idxStr) => {
+    const i = parseInt(idxStr)
+    const { lang, code } = blocks[i]
+    const key = `${msgIdx}_${i}`
+    const canPreview = isRenderable(lang, code)
+
+    if (canPreview) {
+      // Store code for later iframe injection
+      iframeCode[key] = code
+      const mode = previewStates[key] || 'split'
+
+      const btnSplit = mode === 'split'
+      const btnCode  = mode === 'code'
+      const btnPrev  = mode === 'preview'
+
+      const iframeId = `iframe-${msgIdx}-${i}`
+      const codeEscaped = escHtml(code)
+
+      let body = ''
+      if (mode === 'split') {
+        body = `<div class="code-split-body">
+          <div class="code-split-left"><pre><code>${codeEscaped}</code></pre></div>
+          <div class="code-split-right"><iframe class="code-preview-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin"></iframe></div>
+        </div>`
+      } else if (mode === 'code') {
+        body = `<pre style="margin:0;padding:14px;overflow:auto;max-height:420px"><code>${codeEscaped}</code></pre>`
+      } else {
+        body = `<iframe class="code-preview-frame" id="${iframeId}" style="min-height:420px" sandbox="allow-scripts allow-same-origin"></iframe>`
+      }
+
+      return `<div class="code-block-wrap" id="preview-${msgIdx}-${i}">
+        <div class="code-block-header">
+          <span class="code-lang">${lang || 'html'}</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="code-toggle-btn ${btnSplit ? 'active' : ''}" onclick="setPreviewMode(${msgIdx},${i},'split')">⬜ Côte à côte</button>
+            <button class="code-toggle-btn ${btnCode ? 'active' : ''}" onclick="setPreviewMode(${msgIdx},${i},'code')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Code
+            </button>
+            <button class="code-toggle-btn ${btnPrev ? 'active' : ''}" onclick="setPreviewMode(${msgIdx},${i},'preview')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Aperçu
+            </button>
+            <button class="code-copy-btn" onclick="copyCodeByKey('${key}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copier
+            </button>
+          </div>
+        </div>
+        ${body}
+      </div>`
+    }
+
+    // Non-HTML code block
+    return `<div class="code-block-wrap">
+      <div class="code-block-header">
+        <span class="code-lang">${lang || 'code'}</span>
+        <button class="code-copy-btn" onclick="this.closest('.code-block-wrap').querySelector('code') && (navigator.clipboard.writeText(this.closest('.code-block-wrap').querySelector('code').textContent), this.textContent='✓ Copié', setTimeout(()=>this.innerHTML='<svg width=\\'12\\' height=\\'12\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\'/><path d=\\'M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1\\'/></svg> Copier',1500))">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copier
+        </button>
+      </div>
+      <pre style="margin:0;padding:14px;overflow-x:auto;max-height:420px"><code>${escHtml(code)}</code></pre>
+    </div>`
+  })
+
+  return h
+}
+
+function copyCodeByKey(key) {
+  const code = iframeCode[key] || ''
+  navigator.clipboard.writeText(code)
+}
+
+// Inject HTML into iframes after render (avoids URL-encoding issues)
+function injectIframes() {
+  Object.entries(iframeCode).forEach(([key, code]) => {
+    const [msgIdx, blockIdx] = key.split('_')
+    const iframeId = `iframe-${msgIdx}-${blockIdx}`
+    const iframe = document.getElementById(iframeId)
+    if (iframe && !iframe._injected) {
+      iframe._injected = true
+      iframe.srcdoc = code
+    }
   })
 }
 
